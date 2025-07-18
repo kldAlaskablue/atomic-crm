@@ -15,12 +15,17 @@ import {
 
 import { Company } from '../types';
 import { sizes } from './sizes';
+import { useConfigurationContext } from '../root/ConfigurationContext';
+
+
 
 interface CompanyAsideProps {
     link?: string;
 }
 
 export const CompanyAside = ({ link = 'edit' }: CompanyAsideProps) => {
+
+    const { dealStages, taskTypes, noteStatuses } = useConfigurationContext();
     const record = useRecordContext<Company>();
     if (!record) return null;
 

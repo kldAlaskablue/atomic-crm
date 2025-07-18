@@ -42,6 +42,9 @@ import {
     defaultTaskTypes,
     defaultTitle,
 } from './defaultConfiguration';
+import PainelComercial from '../PainelComercial/PainelComercial';
+import DashboardExpandido from '../dashboard/DashboardExpandido';
+
 
 // Define the interface for the CRM component props
 export type CRMProps = {
@@ -163,7 +166,8 @@ export const CRM = ({
                 store={localStorageStore(undefined, 'CRM')}
                 layout={Layout}
                 loginPage={LoginPage}
-                dashboard={Dashboard}
+                //dashboard={Dashboard}
+                dashboard={DashboardExpandido}
                 theme={lightTheme}
                 darkTheme={darkTheme || null}
                 i18nProvider={i18nProvider}
@@ -188,6 +192,7 @@ export const CRM = ({
                         path={SettingsPage.path}
                         element={<SettingsPage />}
                     />
+                    <Route path="/dashboard-original" element={<Dashboard />} />
                 </CustomRoutes>
                 <Resource name="deals" {...deals} />
                 <Resource name="contacts" {...contacts} />

@@ -2,6 +2,8 @@ import companies from './companies';
 import contacts from './contacts';
 import deals from './deals';
 import sales from './sales';
+import './i18n';
+
 
 export { ForgotPasswordPage, SetPasswordPage } from 'ra-supabase';
 

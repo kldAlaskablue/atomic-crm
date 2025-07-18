@@ -16,6 +16,7 @@ import { Company } from '../types';
 import { useConfigurationContext } from '../root/ConfigurationContext';
 import { Avatar } from '../contacts/Avatar';
 
+
 export const CompanyCard = (props: { record?: Company }) => {
     const { companySectors } = useConfigurationContext();
     const [elevation, setElevation] = useState(1);

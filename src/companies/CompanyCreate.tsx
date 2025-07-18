@@ -4,6 +4,7 @@ import { CardContent } from '@mui/material';
 
 import { CompanyInputs } from './CompanyInputs';
 
+
 export const CompanyCreate = () => {
     const { identity } = useGetIdentity();
     return (

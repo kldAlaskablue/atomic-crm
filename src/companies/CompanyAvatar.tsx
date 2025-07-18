@@ -3,6 +3,7 @@ import { Avatar } from '@mui/material';
 import { useRecordContext } from 'react-admin';
 
 import { Company } from '../types';
+import { useConfigurationContext } from '../root/ConfigurationContext';
 
 export const CompanyAvatar = (props: {
     record?: Company;
