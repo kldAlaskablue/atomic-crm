@@ -1,0 +1,51 @@
+/* Estilos base para todos os botões */
+.button {
+  padding: 0.8rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  text-align: center;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.2s ease-in-out, transform 0.1s ease;
+  user-select: none; /* Impede a seleção de texto do botão */
+}
+
+.button:active {
+  transform: translateY(1px); /* Efeito de clique */
+}
+
+/* Variante Primária (Ação Principal) */
+.primary {
+  background-color: #007fff;
+  color: white;
+}
+.primary:hover {
+  background-color: #0059b3;
+}
+
+/* Variante Secundária (Ação Alternativa) */
+.secondary {
+  background-color: #6c757d;
+  color: white;
+}
+.secondary:hover {
+  background-color: #5a6268;
+}
+
+/* Variante de Perigo (Ação Destrutiva) */
+.danger {
+  background-color: #dc3545;
+  color: white;
+}
+.danger:hover {
+  background-color: #c82333;
+}
+
+/* Estilo para botão desabilitado */
+.button:disabled {
+  background-color: #e9ecef;
+  color: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+}

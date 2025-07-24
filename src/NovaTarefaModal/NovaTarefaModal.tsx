@@ -1,148 +1,167 @@
 import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Button,
-  CircularProgress,
-  Stack,
-  MenuItem,
-  Autocomplete,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Box, TextField, Button, Select, MenuItem,
+  FormControl, InputLabel
 } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { DatePicker } from '@mui/x-date-pickers';
+import { useEffect, useState } from 'react';
+import { Dayjs } from 'dayjs';
 import { dataProvider } from '../providers/supabase';
 
-type NovaTarefaModalProps = {
+interface NovaTarefaModalProps {
   open: boolean;
-  close: () => void;
-  onSaved?: () => void;
-};
+  onClose: () => void;
+  onCreated?: () => void;
+  dataSugestao?: Dayjs | null;
+}
 
-type Lead = {
-  id: string;
-  nome: string;
-  telefone: string;
-};
-
-const NovaTarefaModal = ({ open, close, onSaved }: NovaTarefaModalProps) => {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [leadSelecionado, setLeadSelecionado] = useState<Lead | null>(null);
-  const [taskType, setTaskType] = useState('');
-  const [assignedTo, setAssignedTo] = useState('');
-  const [dueDate, setDueDate] = useState('');
-  const [time, setTime] = useState('');
-  const [loading, setLoading] = useState(false);
+const NovaTarefaModal = ({
+  open,
+  onClose,
+  onCreated,
+  dataSugestao
+}: NovaTarefaModalProps) => {
+  const [leads, setLeads] = useState<{ id: string; nome: string }[]>([]);
+  const [responsaveis, setResponsaveis] = useState<string[]>([]);
+  const [leadId, setLeadId] = useState('');
+  const [objetivo, setObjetivo] = useState('');
+  const [dataSelecionada, setDataSelecionada] = useState<Dayjs | null>(dataSugestao ?? null);
+  const [responsavel, setResponsavel] = useState('');
+  const [prioridade, setPrioridade] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      dataProvider
-        .getList('leads', {
-          pagination: { page: 1, perPage: 50 },
-          sort: { field: 'id', order: 'DESC' },
-          filter: {},
-        })
-        .then((res) => setLeads(res.data));
-    }
+    if (!open) return;
+
+    dataProvider.getList('leads', {
+      pagination: { page: 1, perPage: 500 },
+      sort: { field: 'nome', order: 'ASC' },
+      filter: {},
+    }).then(res => {
+      const lista = res.data.map((lead: any) => ({ id: lead.id, nome: lead.nome }));
+      setLeads(lista);
+    });
   }, [open]);
 
-  const handleSave = async () => {
-    if (!leadSelecionado || !taskType || !assignedTo || !dueDate || !time) return;
+  useEffect(() => {
+    if (!open) return;
 
-    setLoading(true);
+    dataProvider.getList('users', {
+      pagination: { page: 1, perPage: 100 },
+      sort: { field: 'nome', order: 'ASC' },
+      filter: { ativo: true },
+    }).then(res => {
+      const nomes = res.data.map((u: any) => u.nome);
+      setResponsaveis(nomes);
+    });
+  }, [open]);
+
+  const handleSalvar = async () => {
+    if (!leadId || !dataSelecionada || !responsavel) {
+      alert('Preencha cliente, data e responsável!');
+      return;
+    }
+
+    setSalvando(true);
     try {
       await dataProvider.create('tasks', {
         data: {
-          contact_name: leadSelecionado.nome,
-          lead_id: leadSelecionado.id,
-          task_type: taskType,
-          assigned_to_name: assignedTo,
-          due_date: `${dueDate}T${time}`,
-          status: 'Pendente',
+          lead_id: leadId,
+          objetivo,
+          due_date: dataSelecionada.toISOString(),
+          responsavel,
+          prioridade,
+          status: 'Pendente' // ✅ campo obrigatório para Kanban
         },
       });
-      close();
-      onSaved?.();
-    } catch (error) {
-      console.error('Erro ao criar tarefa:', error);
-      alert('Erro ao salvar tarefa. Verifique os campos ou tente novamente.');
+
+      onCreated?.();
+      handleFechar();
+    } catch (err) {
+      alert('Erro ao salvar tarefa');
     } finally {
-      setLoading(false);
+      setSalvando(false);
     }
   };
 
+  const handleFechar = () => {
+    setLeadId('');
+    setObjetivo('');
+    setResponsavel('');
+    setPrioridade('');
+    setDataSelecionada(dataSugestao ?? null);
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onClose={close} fullWidth maxWidth="sm">
-      <DialogTitle sx={{ mb: '2rem' }}>➕ Nova Tarefa Comercial</DialogTitle>
-      <DialogContent>
-        <Stack spacing={3}>
-          <Autocomplete
-            options={leads}
-            getOptionLabel={(lead) => `${lead.nome} — ${lead.telefone}`}
-            value={leadSelecionado}
-            onChange={(_, novoLead) => setLeadSelecionado(novoLead)}
-            isOptionEqualToValue={(option, value) => option.id === value.id}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Selecione o cliente"
-                fullWidth
-                InputLabelProps={{ shrink: true }}
-              />
-            )}
+    <Dialog open={open} onClose={handleFechar} fullWidth maxWidth="md">
+      <DialogTitle>➕ Nova Tarefa</DialogTitle>
+      <DialogContent dividers>
+        <Box display="grid" gap={2}>
+          <FormControl fullWidth>
+            <InputLabel>Cliente</InputLabel>
+            <Select
+              value={leadId}
+              label="Cliente"
+              onChange={(e) => setLeadId(e.target.value)}
+            >
+              {leads.map(lead => (
+                <MenuItem key={lead.id} value={lead.id}>{lead.nome}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          <TextField
+            label="Objetivo"
+            value={objetivo}
+            onChange={(e) => setObjetivo(e.target.value)}
+            fullWidth
           />
 
-          <TextField
-            label="Tipo de tarefa"
-            value={taskType}
-            onChange={(e) => setTaskType(e.target.value)}
-            select
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          >
-            <MenuItem value="WhatsApp">WhatsApp</MenuItem>
-            <MenuItem value="Ligação">Ligação</MenuItem>
-            <MenuItem value="Reunião">Reunião</MenuItem>
-            <MenuItem value="Proposta">Proposta</MenuItem>
-          </TextField>
+          <FormControl fullWidth>
+            <InputLabel>Responsável</InputLabel>
+            <Select
+              value={responsavel}
+              label="Responsável"
+              onChange={(e) => setResponsavel(e.target.value)}
+            >
+              {responsaveis.map(nome => (
+                <MenuItem key={nome} value={nome}>{nome}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
 
-          <TextField
-            label="Responsável"
-            value={assignedTo}
-            onChange={(e) => setAssignedTo(e.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
+          <FormControl fullWidth>
+            <InputLabel>Prioridade</InputLabel>
+            <Select
+              value={prioridade}
+              label="Prioridade"
+              onChange={(e) => setPrioridade(e.target.value)}
+            >
+              <MenuItem value="Alta">🔥 Alta</MenuItem>
+              <MenuItem value="Média">⚖️ Média</MenuItem>
+              <MenuItem value="Baixa">🍃 Baixa</MenuItem>
+            </Select>
+          </FormControl>
 
-          <TextField
+          <DatePicker
             label="Data"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
+            value={dataSelecionada}
+            onChange={(date) => setDataSelecionada(date)}
+            slotProps={{ textField: { fullWidth: true } }}
           />
-
-          <TextField
-            label="Horário"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <Stack direction="row" spacing={2}>
-            <Button variant="outlined" onClick={close}>
-              Cancelar
-            </Button>
-            <Button variant="contained" onClick={handleSave} disabled={loading}>
-              {loading ? <CircularProgress size={20} /> : 'Salvar Tarefa'}
-            </Button>
-          </Stack>
-        </Stack>
+        </Box>
       </DialogContent>
+
+      <DialogActions>
+        <Button onClick={handleFechar}>Cancelar</Button>
+        <Button variant="contained" onClick={handleSalvar} disabled={salvando}>
+          {salvando ? 'Salvando...' : '💾 Salvar'}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 };
 
 export default NovaTarefaModal;
+

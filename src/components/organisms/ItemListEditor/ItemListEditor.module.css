@@ -1,0 +1,36 @@
+.container {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.itemRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.input {
+  flex: 1;
+  padding: 0.5rem;
+  font-size: 1rem;
+}
+
+.button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.buttonDelete {
+  background-color: crimson;
+  color: white;
+}
+
+.buttonAdd {
+  background-color: #1d72b8;
+  color: white;
+  margin-top: 0.5rem;
+}

@@ -1,0 +1,24 @@
+.input {
+  width: 100%;
+  padding: 0.8rem;
+  font-size: 1rem;
+  color: #495057;
+  background-color: #fff;
+  border: 1px solid #ced4da; /* Borda sutil */
+  border-radius: 4px; /* Cantos levemente arredondados */
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  box-sizing: border-box; /* Garante que padding não afete a largura total */
+}
+
+/* Estilo para quando o campo está em foco */
+.input:focus {
+  border-color: #007fff; /* Cor do seu tema principal */
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 127, 255, 0.25); /* Sombra sutil no foco */
+}
+
+/* Estilo para Textarea */
+.input[as='textarea'] {
+    resize: vertical; /* Permite que o usuário redimensione verticalmente */
+    min-height: 80px;
+}

@@ -44,6 +44,17 @@ import {
 } from './defaultConfiguration';
 import PainelComercial from '../PainelComercial/PainelComercial';
 import DashboardExpandido from '../dashboard/DashboardExpandido';
+import AdminPage from '../components/pages/AdminPage'
+import CustomAdminLayout from '../layout/CustomAdminLayout';
+import TemplatesPage from '../components/pages/TemplatesPage';
+import TemplateBuilder from '../components/templates/TemplateBuilder'
+import CustomLayout from '../layout/CustomLayout ';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+
+
+
+
 
 
 // Define the interface for the CRM component props
@@ -149,60 +160,72 @@ export const CRM = ({
     }, [disableTelemetry]);
 
     return (
-        <ConfigurationProvider
-            contactGender={contactGender}
-            companySectors={companySectors}
-            dealCategories={dealCategories}
-            dealPipelineStatuses={dealPipelineStatuses}
-            dealStages={dealStages}
-            logo={logo}
-            noteStatuses={noteStatuses}
-            taskTypes={taskTypes}
-            title={title}
-        >
-            <Admin
-                dataProvider={dataProvider}
-                authProvider={authProvider}
-                store={localStorageStore(undefined, 'CRM')}
-                layout={Layout}
-                loginPage={LoginPage}
-                //dashboard={Dashboard}
-                dashboard={DashboardExpandido}
-                theme={lightTheme}
-                darkTheme={darkTheme || null}
-                i18nProvider={i18nProvider}
-                requireAuth
-                disableTelemetry
-                {...rest}
-            >
-                <CustomRoutes noLayout>
-                    <Route path={SignupPage.path} element={<SignupPage />} />
-                    <Route
-                        path={SetPasswordPage.path}
-                        element={<SetPasswordPage />}
-                    />
-                    <Route
-                        path={ForgotPasswordPage.path}
-                        element={<ForgotPasswordPage />}
-                    />
-                </CustomRoutes>
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
 
-                <CustomRoutes>
-                    <Route
-                        path={SettingsPage.path}
-                        element={<SettingsPage />}
-                    />
-                    <Route path="/dashboard-original" element={<Dashboard />} />
-                </CustomRoutes>
-                <Resource name="deals" {...deals} />
-                <Resource name="contacts" {...contacts} />
-                <Resource name="companies" {...companies} />
-                <Resource name="contactNotes" />
-                <Resource name="dealNotes" />
-                <Resource name="tasks" list={ListGuesser} />
-                <Resource name="sales" {...sales} />
-                <Resource name="tags" list={ListGuesser} />
-            </Admin>
-        </ConfigurationProvider>
+
+
+            <ConfigurationProvider
+                contactGender={contactGender}
+                companySectors={companySectors}
+                dealCategories={dealCategories}
+                dealPipelineStatuses={dealPipelineStatuses}
+                dealStages={dealStages}
+                logo={logo}
+                noteStatuses={noteStatuses}
+                taskTypes={taskTypes}
+                title={title}
+            >
+                <Admin
+                    dataProvider={dataProvider}
+                    authProvider={authProvider}
+                    store={localStorageStore(undefined, 'CRM')}
+                    layout={Layout}
+                    // layout={CustomLayout}
+                    // layout={CustomAdminLayout}
+                    loginPage={LoginPage}
+                    //dashboard={Dashboard}
+                    dashboard={DashboardExpandido}
+                    theme={lightTheme}
+                    darkTheme={darkTheme || null}
+                    i18nProvider={i18nProvider}
+                    requireAuth
+                    disableTelemetry
+                    {...rest}
+                >
+                    <CustomRoutes noLayout>
+                        <Route path={SignupPage.path} element={<SignupPage />} />
+                        <Route
+                            path={SetPasswordPage.path}
+                            element={<SetPasswordPage />}
+                        />
+                        <Route
+                            path={ForgotPasswordPage.path}
+                            element={<ForgotPasswordPage />}
+                        />
+                    </CustomRoutes>
+
+                    <CustomRoutes>
+                        <Route
+                            path={SettingsPage.path}
+                            element={<SettingsPage />}
+                        />
+                        <Route path="/dashboard-original" element={<Dashboard />} />
+                        <Route path="/admin" element={<AdminPage />} />
+                        <Route path="/templates" element={<TemplatesPage />} />
+
+
+
+                    </CustomRoutes>
+                    <Resource name="deals" {...deals} />
+                    <Resource name="contacts" {...contacts} />
+                    <Resource name="companies" {...companies} />
+                    <Resource name="contactNotes" />
+                    <Resource name="dealNotes" />
+                    <Resource name="tasks" list={ListGuesser} />
+                    <Resource name="sales" {...sales} />
+                    <Resource name="tags" list={ListGuesser} />
+                </Admin>
+            </ConfigurationProvider>
+        </LocalizationProvider>
     );
 };

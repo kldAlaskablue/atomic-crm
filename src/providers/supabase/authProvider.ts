@@ -38,12 +38,22 @@ export namespace getIsInitialized {
 
 export const authProvider: AuthProvider = {
     ...baseAuthProvider,
-    login: async params => {
-        const result = await baseAuthProvider.login(params);
-        // clear cached sale
+    // login: async params => {
+    //     const result = await baseAuthProvider.login(params);
+    //     // clear cached sale
+    //     cachedSale = undefined;
+    //     return result;
+    // },
+
+    login: async (params) => {
         cachedSale = undefined;
-        return result;
+        return baseAuthProvider.login(params);
     },
+    logout: async (params?: any) => {
+        cachedSale = undefined;
+        return baseAuthProvider.logout(params);
+    },
+
     checkAuth: async params => {
         // Users are on the set-password page, nothing to do
         if (
@@ -89,7 +99,8 @@ export const authProvider: AuthProvider = {
         if (sale == null) return false;
 
         // Compute access rights from the sale role
-        const role = sale.administrator ? 'admin' : 'user';
+        const role =  Boolean(sale.administrator) ? 'admin' : 'user';
+
         return canAccess(role, params);
     },
 };
@@ -120,3 +131,5 @@ const getSaleFromCache = async () => {
     cachedSale = dataSale;
     return dataSale;
 };
+
+export { getSaleFromCache };

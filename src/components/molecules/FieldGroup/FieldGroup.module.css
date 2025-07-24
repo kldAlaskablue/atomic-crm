@@ -1,0 +1,28 @@
+.fieldGroup {
+  margin-bottom: 1.25rem; /* Espaçamento padrão entre os campos */
+  position: relative;
+}
+
+.errorMessage {
+  display: block;
+  color: #dc3545; /* Mesmo vermelho da variante 'danger' do botão */
+  font-size: 0.875rem; /* Um pouco menor que o texto padrão */
+  margin-top: 0.35rem;
+}
+
+/* Quando o FieldGroup está em estado de erro, podemos estilizar os átomos dentro dele.
+  Isso é poderoso porque a lógica de erro está na molécula, e o estilo é aplicado
+  automaticamente aos átomos filhos.
+*/
+.errorState :global(.input) {
+  border-color: #dc3545;
+}
+
+.errorState :global(.input:focus) {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.errorState :global(.label) {
+  color: #dc3545;
+}

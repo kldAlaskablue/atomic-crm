@@ -1,0 +1,27 @@
+.panel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.option {
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  border: 1px solid #bbb;
+  cursor: pointer;
+  background-color: #f5f5f5;
+  transition: background-color 0.2s ease;
+}
+
+.option:hover {
+  background-color: #e0e0e0;
+}
+
+.selected {
+  background-color: #1d72b8;
+  color: white;
+  border-color: #1d72b8;
+}

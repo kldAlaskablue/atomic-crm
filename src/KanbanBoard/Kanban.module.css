@@ -1,0 +1,127 @@
+/* --- Base e Layout Responsivo --- */
+.kanbanBoard {
+  display: grid;
+  grid-template-columns: 1fr; /* Mobile-first: uma coluna por padrão */
+  gap: 24px;
+  padding: 8px;
+}
+
+/* A partir de 768px (tablets), as colunas ficam lado a lado */
+@media (min-width: 768px) {
+  .kanbanBoard {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  }
+}
+
+/* --- Estilo da Coluna --- */
+.kanbanColumn {
+  display: flex;
+  flex-direction: column;
+  background-color: #f4f5f7; /* Cor de fundo suave */
+  border-radius: 8px;
+  padding: 12px;
+  transition: background-color 0.2s ease-in-out;
+}
+
+/* Efeito visual quando um card está sobre a coluna */
+.columnOver {
+  background-color: #e6e9ed;
+}
+
+.columnHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 4px 12px 4px;
+  border-bottom: 2px solid #dfe1e6;
+  margin-bottom: 16px;
+}
+
+.columnTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #172b4d;
+}
+
+.taskCount {
+  background-color: #dfe1e6;
+  color: #42526e;
+  font-size: 0.75rem;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.columnContent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 200px; /* Altura mínima para a área de drop */
+  flex-grow: 1;
+}
+
+/* --- Estilo do Card --- */
+.kanbanCard {
+  background-color: #ffffff;
+  border-radius: 6px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  cursor: grab;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  border-left: 4px solid transparent; /* Borda para indicar prioridade */
+}
+
+.kanbanCard:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+/* Estilo para o card quando está sendo arrastado */
+.dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.15), 0 4px 6px rgba(0, 0, 0, 0.1);
+  transform: rotate(3deg);
+}
+
+.cardObjective {
+  font-weight: 600;
+  color: #172b4d;
+  margin-bottom: 12px;
+}
+
+.cardFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.cardResponsible {
+  font-size: 0.8rem;
+  color: #5e6c84;
+}
+
+.priorityChip {
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+/* Cores opcionais para prioridade */
+.priorityHigh {
+  background-color: #ffebe6;
+  color: #bf2600;
+  border-left-color: #bf2600;
+}
+.priorityMedium {
+  background-color: #fff0b3;
+  color: #ff8b00;
+  border-left-color: #ff8b00;
+}
+.priorityLow {
+  background-color: #deebff;
+  color: #0747a6;
+  border-left-color: #0747a6;
+}

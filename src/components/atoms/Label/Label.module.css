@@ -1,0 +1,8 @@
+.label {
+  display: block; /* Garante que o margin-bottom funcione corretamente */
+  font-size: 1rem;
+  font-weight: bold;
+  color: #343a40; /* Cor escura para boa legibilidade */
+  margin-bottom: 0.5rem; /* Espaço entre o label e o input abaixo */
+  text-transform: capitalize; /* Um toque de estilo para os formulários */
+}

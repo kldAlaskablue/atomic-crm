@@ -1,267 +1,228 @@
 import {
-  Box,
-  Grid,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Select,
-  MenuItem,
-  Button,
-  Chip,
-  Divider,
-  Stack,
-  Snackbar,
+  Box, Card, CardContent, Typography, Button, Grid, Tabs, Tab, Divider
 } from '@mui/material';
 import { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
+import 'dayjs/locale/pt-br';
 import { dataProvider } from '../providers/supabase';
-import LeadEtapaSelector from './LeadEtapaSelector';
-import { v4 as uuidv4 } from 'uuid';
-import * as XLSX from 'xlsx';
 
-type Lead = {
+import CardProposta from '../leads/CardProposta';
+import CardReclamacao from '../leads/CardReclamacao';
+import CardPreferencias from '../leads/CardPreferencias';
+import CardAcoesFuturas from '../leads/CardAcoesFuturas';
+import LeadFluxo from '../leads/LeadFluxo';
+
+dayjs.locale('pt-br');
+
+interface Lead {
   id: string;
   nome: string;
-  email: string;
   telefone: string;
-  origem: string;
+  email: string;
+  empresa: string;
+  canal_captacao: string;
   interesse: string;
-  etapa: string;
+  data_captacao: string;
   status: string;
-  data_criacao: string;
+  origem: string;
   responsavel: string;
-  proxima_acao?: string;
-};
+  observacoes: string;
+  usuarioInstagram?: string;
+  usuarioFacebook?: string;
+  whatsapp?: string;
+}
 
-const etapas = [
-  'novo',
-  'qualificado',
-  'reunião agendada',
-  'proposta enviada',
-  'negócio fechado',
-  'perdido',
-];
-
-const corPorEtapa: Record<string, string> = {
-  novo: '#1976d2',
-  qualificado: '#388e3c',
-  'reunião agendada': '#f57c00',
-  'proposta enviada': '#7b1fa2',
-  'negócio fechado': '#2e7d32',
-  perdido: '#b71c1c',
-};
+interface EvolucaoLead {
+  id: string;
+  lead_id: string;
+  fase: string;
+  data: string;
+  anotacao?: string;
+}
 
 const LeadsDashboard = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [form, setForm] = useState({
-    nome: '',
-    email: '',
-    telefone: '',
-    origem: 'manual',
-    interesse: '',
-    proxima_acao: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-  });
-
-  const [followupCount, setFollowupCount] = useState(0);
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [successToast, setSuccessToast] = useState('');
-
-  const fetchLeads = async () => {
-    const res = await dataProvider.getList('leads', {
-      pagination: { page: 1, perPage: 100 },
-      sort: { field: 'data_criacao', order: 'DESC' },
-      filter: {},
-    });
-
-    setLeads(res.data);
-
-    const hoje = new Date().toISOString().slice(0, 10);
-    const pendentes = res.data.filter(
-      (lead: Lead) =>
-        lead.proxima_acao && lead.proxima_acao.slice(0, 10) <= hoje
-    );
-    setFollowupCount(pendentes.length);
-  };
+  const [fases, setFases] = useState<EvolucaoLead[]>([]);
+  const [abaSelecionadaPorLead, setAbaSelecionadaPorLead] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    fetchLeads();
-    const intervalo = setInterval(() => {
-      fetchLeads();
-    }, 60000);
-    return () => clearInterval(intervalo);
+    dataProvider.getList('leads', {
+      pagination: { page: 1, perPage: 200 },
+      sort: { field: 'nome', order: 'ASC' },
+      filter: {},
+    }).then(res => setLeads(res.data as Lead[]));
+
+    dataProvider.getList('evolucao_lead', {
+      pagination: { page: 1, perPage: 1000 },
+      sort: { field: 'data', order: 'ASC' },
+      filter: {},
+    }).then(res => setFases(res.data as EvolucaoLead[]));
   }, []);
 
-  const handleCadastrarLead = async () => {
-    const hoje = new Date().toISOString().slice(0, 10);
-    if (!form.proxima_acao || form.proxima_acao < hoje) {
-      setSuccessToast('⚠️ A data de follow-up precisa estar no futuro!');
-      return;
-    }
-
-    const payload = {
-      ...form,
-      id: uuidv4(),
-      etapa: 'novo',
-      status: 'ativo',
-      data_criacao: new Date().toISOString(),
-      responsavel: 'comercial-1',
-      proxima_acao: new Date(form.proxima_acao).toISOString(),
-    };
-
-    await dataProvider.create('leads', { data: payload });
-
-    await dataProvider.create('tasks', {
-      data: {
-        task_type: 'Follow-up com Lead',
-        contact_name: payload.nome,
-        assigned_to_name: payload.responsavel,
-        due_date: payload.proxima_acao,
-        lead_id: payload.id,
-        status: 'Pendente',
-      },
-    });
-
-    fetchLeads();
-    setForm({
-      nome: '',
-      email: '',
-      telefone: '',
-      origem: 'manual',
-      interesse: '',
-      proxima_acao: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
-    });
-    setSnackbarOpen(true);
+  const handleChangeAba = (leadId: string, novaAba: number) => {
+    setAbaSelecionadaPorLead(prev => ({
+      ...prev,
+      [leadId]: novaAba
+    }));
   };
 
-  const handleExportLeads = () => {
-    const planilha = XLSX.utils.json_to_sheet(leads);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, planilha, 'Leads');
-    XLSX.writeFile(workbook, 'leads.xlsx');
-    setSuccessToast('📁 Leads exportados com sucesso!');
+  const formatPhone = (tel?: string) => {
+    if (!tel) return '';
+    return tel.replace(/\D/g, '');
   };
 
   return (
-    <Box mt={5}>
-      <Typography variant="h5" fontWeight="bold" gutterBottom>
-        🧠 Painel Comercial Inteligente
-      </Typography>
+    <Box mt={4}>
+      <Typography variant="h4" gutterBottom>📣 Painel Estratégico de Leads</Typography>
 
-      {followupCount > 0 && (
-        <Snackbar
-          open={true}
-          message={`🔔 ${followupCount} leads precisam de follow-up!`}
-          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-        />
-      )}
+      <Grid container spacing={3}>
+        {leads.map((lead) => {
+          const fasesDoLead = fases.filter(f => f.lead_id === lead.id);
+          const ultimaFase = fasesDoLead[fasesDoLead.length - 1];
+          const diasSemAcoes = ultimaFase
+            ? dayjs().diff(dayjs(ultimaFase.data), 'day')
+            : null;
 
-      {successToast && (
-        <Snackbar
-          open={true}
-          message={successToast}
-          anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-          autoHideDuration={3000}
-          onClose={() => setSuccessToast('')}
-        />
-      )}
-
-      <Button variant="outlined" sx={{ mb: 2 }} onClick={handleExportLeads}>
-        📤 Exportar para Excel
-      </Button>
-
-      {/* Cadastro de lead */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6">📥 Novo Lead</Typography>
-          <Stack spacing={2} mt={2}>
-            <TextField label="Nome" fullWidth value={form.nome} onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))} />
-            <TextField label="Email" fullWidth value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-            <TextField label="Telefone" fullWidth value={form.telefone} onChange={(e) => setForm((f) => ({ ...f, telefone: e.target.value }))} />
-            <TextField label="Interesse" fullWidth value={form.interesse} onChange={(e) => setForm((f) => ({ ...f, interesse: e.target.value }))} />
-            <Select fullWidth value={form.origem} onChange={(e) => setForm((f) => ({ ...f, origem: e.target.value }))}>
-              <MenuItem value="manual">Manual</MenuItem>
-              <MenuItem value="email">Email</MenuItem>
-              <MenuItem value="site">Site</MenuItem>
-              <MenuItem value="whatsapp">WhatsApp</MenuItem>
-            </Select>
-            <TextField
-              label="Data de Follow-up"
-              type="date"
-              fullWidth
-              value={form.proxima_acao}
-              onChange={(e) => setForm((f) => ({ ...f, proxima_acao: e.target.value }))}
-              InputLabelProps={{ shrink: true }}
-              required
-            />
-            <Button variant="contained" onClick={handleCadastrarLead}>Cadastrar Lead</Button>
-          </Stack>
-        </CardContent>
-      </Card>
-
-      {/* Funil por etapa */}
-      <Typography variant="h6">🚦 Funil de Etapas</Typography>
-      <Grid container spacing={2} mb={4}>
-        {etapas.map((etapa) => {
-          const count = leads.filter((l) => l.etapa === etapa).length;
           return (
-            <Grid item xs={12} sm={6} md={4} key={etapa}>
-              <Card sx={{ bgcolor: corPorEtapa[etapa], color: '#fff' }}>
+            <Grid item xs={12} md={6} key={lead.id}>
+              <Card>
                 <CardContent>
-                  <Typography variant="subtitle2">{etapa.toUpperCase()}</Typography>
-                  <Typography variant="h4">{count}</Typography>
+                  <Typography variant="h6">{lead.nome}</Typography>
+                  <Typography variant="body2">🏢 {lead.empresa} | 📞 {lead.telefone}</Typography>
+                  <Typography variant="body2">✉️ {lead.email} | 📍 {lead.origem}</Typography>
+                  <Typography variant="body2">🎯 Interesse: {lead.interesse}</Typography>
+                  <Typography variant="body2">⚙️ Status: {lead.status}</Typography>
+                  <Typography variant="body2">👤 Responsável: {lead.responsavel}</Typography>
+
+                  <Box mt={2} display="flex" gap={1}>
+                    <Button
+                      variant="outlined"
+                      color="success"
+                      href={`https://wa.me/${formatPhone(lead.whatsapp || lead.telefone)}?text=${encodeURIComponent(`Olá ${lead.nome}, como posso te ajudar com sua proposta?`)}`}
+                      target="_blank"
+                    >
+                      WhatsApp
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      href={`https://facebook.com/${lead.usuarioFacebook}`}
+                      target="_blank"
+                    >
+                      Facebook
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      href={`https://instagram.com/${lead.usuarioInstagram}`}
+                      target="_blank"
+                    >
+                      Instagram
+                    </Button>
+                  </Box>
+
+                  <Box mt={4}>
+                    <Tabs
+                      value={abaSelecionadaPorLead[lead.id] ?? 0}
+                      onChange={(e, novaAba) => handleChangeAba(lead.id, novaAba)}
+                      variant="scrollable"
+                      scrollButtons="auto"
+                    >
+                      <Tab label="📄 Propostas" />
+                      <Tab label="📮 Reclamações" />
+                      <Tab label="🎯 Preferências" />
+                      <Tab label="📌 Ações Futuras" />
+                      <Tab label="🧭 Fluxo Comercial" />
+                    </Tabs>
+
+                    <Box mt={2}>
+                      {(abaSelecionadaPorLead[lead.id] ?? 0) === 0 && (
+                        <CardProposta
+                          valor={12000}
+                          dataEnvio="10/07"
+                          validade="20/07"
+                          status="pendente"
+                          responsavel="Carlos Mendes"
+                        />
+                      )}
+
+                      {(abaSelecionadaPorLead[lead.id] ?? 0) === 1 && (
+                        <CardReclamacao
+                          tipo="Reclamação"
+                          data="05/07"
+                          assunto="Produto com defeito"
+                          status="resolvido"
+                          acaoTomada="Troca realizada em 24h"
+                          feedback="Cliente elogiou atendimento"
+                        />
+                      )}
+
+                      {(abaSelecionadaPorLead[lead.id] ?? 0) === 2 && (
+                        <CardPreferencias
+                          interesse="Linha premium"
+                          comunicacao="WhatsApp"
+                          segmento="Alimentos"
+                          porte="Grande"
+                        />
+                      )}
+
+                      {(abaSelecionadaPorLead[lead.id] ?? 0) === 3 && (
+                        <CardAcoesFuturas
+                          descricao="Agendar reunião até 25/07"
+                          responsavel="Paulo"
+                          prioridade="Alta"
+                        />
+                      )}
+
+                      {(abaSelecionadaPorLead[lead.id] ?? 0) === 4 && (
+                        <>
+                          <LeadFluxo
+                            fases={fasesDoLead.map(f => ({
+                              fase: f.fase,
+                              data: f.data,
+                              anotacao: f.anotacao
+                            }))}
+                            mensagens={[
+                              'Olá, estou interessado na linha premium.',
+                              'Pode enviar valores e condições?',
+                              'Recebi a proposta, obrigado!'
+                            ]}
+                            leadId={lead.id}
+                            onNovaFase={() => {
+                              dataProvider.getList('evolucao_lead', {
+                                pagination: { page: 1, perPage: 1000 },
+                                sort: { field: 'data', order: 'ASC' },
+                                filter: {},
+                              }).then(res => setFases(res.data));
+                            }}
+                          />
+
+                          {diasSemAcoes && diasSemAcoes > 5 && (
+                            <Box mt={2}>
+                              <Typography variant="body2" color="warning.main">
+                                ⏳ Este lead está parado há {diasSemAcoes} dias
+                              </Typography>
+                              <Button
+                                variant="contained"
+                                color="primary"
+                                sx={{ mt: 1 }}
+                                href={`https://wa.me/${formatPhone(lead.telefone)}?text=${encodeURIComponent(`Olá ${lead.nome}, seguimos disponíveis para apoiar você com sua proposta. Precisa de algo mais?`)}`}
+                                target="_blank"
+                              >
+                                📬 Enviar Follow-up
+                              </Button>
+                            </Box>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                  </Box>
                 </CardContent>
               </Card>
             </Grid>
           );
         })}
       </Grid>
-
-      <Divider sx={{ mb: 3 }} />
-
-      {/* Lista de leads */}
-      <Typography variant="h6">📋 Leads Recentes</Typography>
-      <Grid container spacing={3}>
-        {leads.map((lead) => (
-          <Grid item xs={12} md={6} lg={4} key={lead.id}>
-            <Card sx={{ bgcolor: '#f5f5f5' }}>
-              <CardContent>
-                <Typography variant="h6">{lead.nome}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {lead.email ?? '—'} • {lead.telefone ?? '—'}<br />
-                  Origem: {lead.origem} • Interesse: {lead.interesse ?? '—'}
-                </Typography>
-                <Typography variant="body2" sx={{ mt: 2 }}>Etapa:</Typography>
-                <LeadEtapaSelector
-                  leadId={lead.id}
-                  currentEtapa={lead.etapa}
-                  onUpdated={fetchLeads}
-                />
-
-                {lead.proxima_acao && new Date(lead.proxima_acao) < new Date() && (
-                  <Chip label="⚠️ Follow-up atrasado" color="error" sx={{ mt: 1 }} />
-                )}
-
-                <Stack direction="row" spacing={1} mt={2}>
-                  {lead.email && <Chip label="✔ Email" color="success" />}
-                  {lead.telefone && <Chip label="✔ Telefone" color="success" />}
-                  {lead.interesse && <Chip label="✔ Interesse" color="success" />}
-                </Stack>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-
-      {/* Toast de confirmação */}
-      <Snackbar
-        open={snackbarOpen}
-        autoHideDuration={3000}
-        message="✅ Lead cadastrado com sucesso!"
-        onClose={() => setSnackbarOpen(false)}
-      />
     </Box>
   );
 };
 
 export default LeadsDashboard;
-
