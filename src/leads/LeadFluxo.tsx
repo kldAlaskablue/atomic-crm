@@ -98,6 +98,7 @@ const LeadFluxo = ({ fases, mensagens, leadId, onNovaFase }: LeadFluxoProps) => 
           {salvando ? 'Salvando...' : '💾 Salvar fase'}
         </Button>
       </Box>
+      
     </Box>
   );
 };

@@ -51,6 +51,11 @@ import TemplateBuilder from '../components/templates/TemplateBuilder'
 import CustomLayout from '../layout/CustomLayout ';
 import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import ForgotPassword from '../components/pages/ForgotPassword';
+import SetPassword from '../components/pages/SetPassword';
+import ConfirmEmail from '../auth/confirm/ConfirmEmail';
+import ConfirmInvite from '../auth/confirm/ConfirmInvite';
+import ConfirmRouter from '../auth/confirm/ConfirmRouter';
 
 
 
@@ -194,10 +199,15 @@ export const CRM = ({
                 >
                     <CustomRoutes noLayout>
                         <Route path={SignupPage.path} element={<SignupPage />} />
-                        <Route
+                        {/* <Route
                             path={SetPasswordPage.path}
                             element={<SetPasswordPage />}
-                        />
+                        /> */}
+                        <Route path="/pages/set-password" element={<SetPassword />} />
+                        <Route path="/auth/confirm" element={<ConfirmRouter />} />
+
+
+
                         <Route
                             path={ForgotPasswordPage.path}
                             element={<ForgotPasswordPage />}
@@ -212,6 +222,8 @@ export const CRM = ({
                         <Route path="/dashboard-original" element={<Dashboard />} />
                         <Route path="/admin" element={<AdminPage />} />
                         <Route path="/templates" element={<TemplatesPage />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        
 
 
 

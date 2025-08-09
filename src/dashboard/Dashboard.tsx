@@ -30,9 +30,6 @@ export const Dashboard = () => {
   const [dealsDebug, setDealsDebug] = useState<any[]>([]);
   const usuario = useUsuarioLogadoInfo();
 
-  console.log('👤 Usuário logado:', usuario);
-
-
   useEffect(() => {
     dataProvider.getList('contacts', {
       pagination: { page: 1, perPage: 10 },
@@ -145,8 +142,7 @@ export const Dashboard = () => {
 
       {/* Agenda atualizada com reagendamento e histórico */}
       <Box mt={5}>
-        <TaskAgenda
-       
+        <TaskAgenda      
         />
       </Box>
       <Box mt={5}>

@@ -25,7 +25,7 @@ dayjs.locale('pt-br');
 
 type Task = {
   id: string;
-  nomeCompleto: string;
+  nomecompleto: string;
   empresa: string;
   cargo: string;
   telefone: string;
@@ -62,28 +62,52 @@ const TaskAgenda = () => {
 
   const hoje = dayjs();
 
+  // useEffect(() => {
+  //   dataProvider
+  //     .getList('tasks', {
+  //       pagination: { page: 1, perPage: 500 },
+  //       sort: { field: 'due_date', order: 'ASC' },
+  //       filter: {},
+  //     })
+  //     .then(res => setTasks(res.data as Task[]));
+  // }, []);
+
   useEffect(() => {
-    dataProvider
-      .getList('tasks', {
-        pagination: { page: 1, perPage: 500 },
-        sort: { field: 'due_date', order: 'ASC' },
-        filter: {},
-      })
-      .then(res => setTasks(res.data as Task[]));
+    dataProvider.getList('tasks', {
+      pagination: { page: 1, perPage: 500 },
+      sort: { field: 'due_date', order: 'ASC' },
+      filter: {},
+    }).then(res => {
+      console.log('Dados de tarefas recebidos:', res.data[0]?.due_date);
+      const dadosCompletos: Task[] = res.data.map((t: any) => ({
+        ...t,
+        nomeCompleto: t.contact_name ?? 'Cliente não informado',
+        telefone: t.telefone ?? '',
+        email: t.email ?? '',
+        empresa: t.empresa ?? '',
+        due_date: t.due_date ?? '',
+
+      }));
+
+      setTasks(dadosCompletos);
+    });
   }, []);
 
   const tarefasSemana = useMemo(() => {
     return tasks.filter(task => {
-      const data = dayjs(task.due_date);
+      const data = dayjs(task?.due_date);
       const dias = data.diff(hoje, 'day');
+
       return dias >= 0 && dias <= 7;
     });
   }, [tasks]);
 
   const tarefasPorDia = useMemo(() => {
     return tarefasSemana.reduce((acc: Record<string, Task[]>, task) => {
-      const dia = dayjs(task.due_date).format('dddd');
-      acc[dia] = acc[dia] ? [...acc[dia], task] : [task];
+
+      const chaveDia = dayjs(task?.due_date).format('YYYY-MM-DD');
+
+      acc[chaveDia] = acc[chaveDia] ? [...acc[chaveDia], task] : [task];
       return acc;
     }, {});
   }, [tarefasSemana]);
@@ -91,8 +115,8 @@ const TaskAgenda = () => {
   const tarefasDoDia = useMemo(() => {
     const lista = tarefasPorDia[selectedDay ?? ''] ?? [];
     return lista.filter(task =>
-      task.nomeCompleto?.toLowerCase().includes(filtroCliente.toLowerCase()) &&
-      (!selectedDate || dayjs(task.due_date).isSame(selectedDate, 'day'))
+      task.id?.toLowerCase().includes(filtroCliente.toLowerCase()) &&
+      (!selectedDate || dayjs(task?.due_date).isSame(selectedDate, 'day'))
     );
   }, [tarefasPorDia, selectedDay, filtroCliente, selectedDate]);
 
@@ -102,33 +126,59 @@ const TaskAgenda = () => {
   );
 
   const handleCancelar = (task: Task) => {
-    alert(`Cancelar tarefa de ${task.nomeCompleto}`);
+    alert(`Cancelar tarefa de ${task.nomecompleto}`);
+  };
+  // const handleDetalhe = async (taskId: string) => {
+  //     console.log('Detalhe da tarefa:', taskId);
+  //   const res = await dataProvider.getOne('view_detalhe_cliente', { id: taskId });
+
+  //   setSelectedTask(res.data as Task);
+  // };
+
+  const handleDetalhe = async (taskId: string) => {
+    console.log('Detalhe da tarefa:', taskId);
+    const res = await dataProvider.getList('view_detalhe_cliente', {
+      pagination: { page: 1, perPage: 1 },
+      sort: { field: 'id', order: 'ASC' },
+      filter: { id: taskId }
+    }).then(res => {
+    
+      const dadosView: Task[] = res.data.map((t: any) => ({
+        ...t,
+        nomeCompleto: t.nomecompleto ?? 'Cliente não informado',
+        telefone: t.telefone ?? '',
+        email: t.email ?? '',
+        empresa: t.empresa ?? '',
+        due_date: t.due_date ?? '',
+
+      }));
+
+      if (dadosView.length > 0) {
+        setSelectedTask(dadosView[0]);
+      } else {
+        alert('Dados detalhados não encontrados.');
+      }
+    });
   };
 
   return (
     <Box mt={4}>
       <Typography variant="h4" gutterBottom>📆 Agenda Semanal</Typography>
 
-      {usuario && (
-        <Box display="flex" alignItems="center" gap={2} mb={4}>
-          {usuario.avatar && <Avatar src={usuario.avatar} />}
-          <Typography variant="subtitle1">
-            Logado como: <strong>{usuario.fullName}</strong>
-          </Typography>
-        </Box>
-      )}
-
       <Grid container spacing={2}>
-        {Object.entries(tarefasPorDia).map(([dia, lista]) => (
-          <Grid item xs={12} sm={6} md={4} key={dia}>
-            <Card onClick={() => {
-              setSelectedDay(dia);
-              setPaginaDoDia(1);
-              setSelectedDate(null);
-              setFiltroCliente('');
-            }} sx={{ cursor: 'pointer' }}>
+        {Object.entries(tarefasPorDia).map(([dataIso, lista]) => (
+          <Grid item xs={12} sm={6} md={4} key={dataIso}>
+            <Card
+              onClick={() => {
+                setSelectedDay(dataIso);
+                setPaginaDoDia(1);
+                setFiltroCliente('');
+                setSelectedDate(null);
+              }}
+              sx={{ cursor: 'pointer' }}
+            >
               <CardContent>
-                <Typography variant="h6">{dia}</Typography>
+                <Typography variant="h6">{dayjs(dataIso).format('dddd')}</Typography>
                 <Typography variant="body2">{lista.length} compromissos</Typography>
               </CardContent>
             </Card>
@@ -138,7 +188,7 @@ const TaskAgenda = () => {
 
       {selectedDay && (
         <Box mt={4}>
-          <Typography variant="h6">📌 Compromissos de {selectedDay}</Typography>
+          <Typography variant="h6">📌 Compromissos de {dayjs(selectedDay).format('dddd')}</Typography>
 
           <Grid container spacing={2} mb={2}>
             <Grid item xs={6}>
@@ -172,15 +222,36 @@ const TaskAgenda = () => {
               boxShadow: 2,
             }}>
               <CardContent>
-                <Typography variant="subtitle1" fontWeight="bold">👤 Cliente: {task.nomeCompleto}</Typography>
+                <Typography variant="subtitle1" fontWeight="bold">👤 Cliente: {task.nomecompleto}</Typography>
                 <Typography variant="body2">🧑‍💼 Responsável: {task.responsavel}</Typography>
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  🕒 {dayjs(task.due_date).format('HH:mm')} | 🎯 {task.objetivo}
+                  🕒 {dayjs(task?.due_date).format('HH:mm')} | 🎯 {task.objetivo}
                 </Typography>
                 <Box mt={2} display="flex" gap={1}>
-                  <Button variant="outlined" color="primary" onClick={() => setTaskReagendarId(task.id)}>Reagendar</Button>
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    onClick={async () => {
+                      const res = await dataProvider.getList('view_detalhe_cliente', {
+                        pagination: { page: 1, perPage: 1 },
+                        sort: { field: 'id', order: 'ASC' },
+                        filter: { id: task.id },
+                      });
+
+                      if (res.data.length > 0) {
+                        const dadosCompletos = res.data[0] as Task;
+                        console.log('aquiiii oi', dadosCompletos)
+                        setTaskReagendarId(task.id);
+                        setSelectedTask(dadosCompletos); // 👈 Passa os dados para o TaskEdit
+                      } else {
+                        alert('Dados detalhados não encontrados para reagendamento.');
+                      }
+                    }}
+                  >
+                    Reagendar
+                  </Button>
                   <Button variant="outlined" color="error" onClick={() => handleCancelar(task)}>Cancelar</Button>
-                  <Button variant="outlined" onClick={() => setSelectedTask(task)}>Ver detalhes</Button>
+                  <Button variant="outlined" onClick={() => handleDetalhe(task.id)}>Ver detalhes</Button>
                 </Box>
               </CardContent>
             </Card>
@@ -196,16 +267,21 @@ const TaskAgenda = () => {
       )}
 
       {taskReagendarId && usuario?.id && (
+
         <TaskEdit
           open={!!taskReagendarId}
           close={() => setTaskReagendarId(null)}
           taskId={taskReagendarId}
+          selectedData={selectedTask} // 👈 Isso está certo!
           onSaved={() => {
             setTaskReagendarId(null);
             setSelectedTask(null);
             setPaginaDoDia(1);
           }}
         />
+
+
+
       )}
 
       <Dialog open={!!selectedTask} onClose={() => setSelectedTask(null)} fullWidth maxWidth="md">
@@ -213,21 +289,14 @@ const TaskAgenda = () => {
         <DialogContent dividers>
           {selectedTask && (
             <Box display="grid" gap={1}>
-              <Typography><strong>Cliente:</strong> {selectedTask.nomeCompleto}</Typography>
+              <Typography><strong>Cliente:</strong> {selectedTask.nomecompleto}</Typography>
               <Typography><strong>Empresa:</strong> {selectedTask.empresa}</Typography>
-              <Typography><strong>Cargo:</strong> {selectedTask.cargo}</Typography>
-              <Typography><strong>Contato:</strong> {selectedTask.telefone} / {selectedTask.email}</Typography>
-              <Typography><strong>Histórico:</strong> {selectedTask.historico}</Typography>
+              <Typography><strong>Contato:</strong> {selectedTask.email}</Typography>
               <Typography><strong>Objetivo:</strong> {selectedTask.objetivo}</Typography>
-              <Typography><strong>Contexto:</strong> {selectedTask.contexto}</Typography>
-              <Typography><strong>Recursos:</strong> {selectedTask.recursos}</Typography>
               <Typography><strong>Ações Pós-Visita:</strong> {selectedTask.acoesPosVisita}</Typography>
-              <Typography><strong>Local:</strong> {selectedTask.local}</Typography>
-                            <Typography>
-                <strong>Prioridade:</strong> {selectedTask.prioridade}
-              </Typography>
+              <Typography><strong>Prioridade:</strong> {selectedTask.prioridade}</Typography>
               <Typography>
-                <strong>Data:</strong> {dayjs(selectedTask.due_date).format('dddd, DD/MM/YYYY HH:mm')}
+                <strong>Data:</strong> {dayjs(selectedTask?.due_date).format('dddd, DD/MM/YYYY HH:mm')}
               </Typography>
             </Box>
           )}
@@ -241,4 +310,3 @@ const TaskAgenda = () => {
 };
 
 export default TaskAgenda;
-

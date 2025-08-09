@@ -1,234 +1,234 @@
 import {
-  Box, Card, CardContent, Typography, TextField, Grid,
-  Dialog, DialogTitle, DialogContent, DialogActions, Button
+  Box, Typography, Grid, Card, CardContent, TextField,
+  Select, MenuItem, Button, Pagination
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
-import { useEffect, useState, useMemo } from 'react';
-import { dataProvider } from '../providers/supabase';
 import dayjs, { Dayjs } from 'dayjs';
 import 'dayjs/locale/pt-br';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import Papa from 'papaparse';
+import { useEffect, useState, useMemo } from 'react';
+import { dataProvider } from '../providers/supabase';
 
 dayjs.locale('pt-br');
+dayjs.extend(isSameOrAfter);
+dayjs.extend(isSameOrBefore);
 
-interface ClienteHistorico {
+interface TaskHistory {
   id: string;
-  nome: string;
+  task_id_original: string;
+  contact_name: string;
+  assigned_to_name: string;
   telefone: string;
   email: string;
-  endereco: string;
-  codigoCliente: string;
-  dataCadastro: string;
-  status: 'ativo' | 'inativo' | 'prospecto';
-  origem: string;
   empresa: string;
-  ramo: string;
-  porte: string;
-  decisores: string;
-  preferencias: string;
-  observacoes: string;
-  acaoFutura: string;
-  vendedor: string;
-  compras: {
-    data: string;
-    produto: string;
-    quantidade: number;
-    valor: number;
-    formaPagamento: string;
-  }[];
-  interacoes: {
-    tipo: string;
-    data: string;
-    assunto: string;
-    detalhes: string;
-    status: string;
-    vendedor: string;
-  }[];
-  solicitacoes: {
-    tipo: string;
-    data: string;
-    assunto: string;
-    status: string;
-    acaoTomada: string;
-    feedback: string;
-  }[];
+  status: string;
+  reagendado_em: string;
+  created_at: string;
+  observacao_vendedor?: string; // Novo campo
+
 }
 
-const HistoricoPorCliente = () => {
-  const [dados, setDados] = useState<ClienteHistorico[]>([]);
+const corDoStatus: Record<string, string> = {
+  Reagendado: '#1976d2',
+  Concluído: '#2e7d32',
+  Pendente: '#ed6c02',
+};
+
+const safeDateFormat = (data?: string): string =>
+  data && dayjs(data).isValid()
+    ? dayjs(data).format('DD/MM/YYYY HH:mm')
+    : '—';
+
+export default function HistoricoPorCliente() {
+  const [dados, setDados] = useState<TaskHistory[]>([]);
+  const [clienteSelecionado, setClienteSelecionado] = useState<string | null>(null);
+  const [pagina, setPagina] = useState(1);
   const [filtroNome, setFiltroNome] = useState('');
+  const [statusSelecionado, setStatusSelecionado] = useState('');
   const [dataInicio, setDataInicio] = useState<Dayjs | null>(null);
   const [dataFim, setDataFim] = useState<Dayjs | null>(null);
-  const [clienteSelecionado, setClienteSelecionado] = useState<ClienteHistorico | null>(null);
+  const ITEMS_PER_PAGE = 5;
 
   useEffect(() => {
-  const dadosSimulados: ClienteHistorico[] = [
-    {
-      id: 'cli001',
-      nome: 'João Silva',
-      telefone: '(11) 98888-0000',
-      email: 'joao.silva@exemplo.com',
-      endereco: 'Rua das Flores, 123, São Paulo - SP',
-      codigoCliente: 'C1001',
-      dataCadastro: '2022-03-15',
-      status: 'ativo',
-      origem: 'Indicação',
-      empresa: 'ACME Ltda',
-      ramo: 'Logística',
-      porte: 'Médio',
-      decisores: 'João Silva, Carla Mendes',
-      preferencias: 'Produtos sustentáveis, contato por WhatsApp',
-      observacoes: 'Busca soluções ágeis e com suporte constante.',
-      acaoFutura: 'Agendar demonstração até 25/07 com Paulo',
-      vendedor: 'Paulo Castro',
-      compras: [
-        {
-          data: '2023-11-10',
-          produto: 'Caixas térmicas',
-          quantidade: 50,
-          valor: 12000,
-          formaPagamento: 'Cartão'
-        }
-      ],
-      interacoes: [
-        {
-          tipo: 'Reunião',
-          data: '2024-01-15T10:00',
-          assunto: 'Nova linha de produtos',
-          detalhes: 'Cliente solicitou amostras',
-          status: 'resolvido',
-          vendedor: 'Paulo Castro'
-        }
-      ],
-      solicitacoes: [
-        {
-          tipo: 'Reclamação',
-          data: '2024-05-10',
-          assunto: 'Entrega atrasada',
-          status: 'resolvido',
-          acaoTomada: 'Contato imediato e envio emergencial',
-          feedback: 'Cliente satisfeito com resposta'
-        }
-      ]
-    }
-  ];
-  setDados(dadosSimulados);
-}, []);
+    const carregar = async () => {
+      const res = await dataProvider.getList('task_history', {
+        pagination: { page: 1, perPage: 1000 },
+        sort: { field: 'created_at', order: 'DESC' },
+        filter: {},
+      });
 
+      const dadosFormatados: TaskHistory[] = res.data.map((t: any) => ({
+        id: t.id ?? t.task_id_original ?? crypto.randomUUID(),
+        task_id_original: t.task_id_original ?? '',
+        contact_name: t.contact_name ?? 'Cliente não informado',
+        telefone: t.telefone ?? '',
+        email: t.email ?? '',
+        empresa: t.empresa ?? '',
+        status: t.status ?? '',
+        reagendado_em: t.reagendado_em ?? '',
+        assigned_to_name: t.assigned_to_name ?? '',
+        created_at: t.created_at ?? '',
+        observacao_vendedor: t.observacao_vendedor ?? '', // Novo campo
+      }));
 
-  useEffect(() => {
-    dataProvider.getList('clientes_historico', {
-      pagination: { page: 1, perPage: 500 },
-      sort: { field: 'nome', order: 'ASC' },
-      filter: {},
-    }).then(response => setDados(response.data as ClienteHistorico[]));
+      setDados(dadosFormatados);
+    };
+
+    carregar();
   }, []);
 
-  const clientesFiltrados = useMemo(() =>
-    dados.filter(cliente =>
-      cliente.nome?.toLowerCase().includes(filtroNome.toLowerCase()) &&
-      (!dataInicio || dayjs(cliente.dataCadastro).isAfter(dataInicio.subtract(1, 'day'))) &&
-      (!dataFim || dayjs(cliente.dataCadastro).isBefore(dataFim.add(1, 'day')))
-    ), [dados, filtroNome, dataInicio, dataFim]);
+  const filtrados = useMemo(() => {
+    return dados.filter(item => {
+      const passouNome = !filtroNome || item.contact_name.toLowerCase().includes(filtroNome.toLowerCase());
+      const passouStatus = !statusSelecionado || item.status === statusSelecionado;
+      const passouInicio = !dataInicio || dayjs(item.created_at).isSameOrAfter(dataInicio, 'day');
+      const passouFim = !dataFim || dayjs(item.created_at).isSameOrBefore(dataFim, 'day');
+      return passouNome && passouStatus && passouInicio && passouFim;
+    });
+  }, [dados, filtroNome, statusSelecionado, dataInicio, dataFim]);
+
+  const agrupadoPorCliente = useMemo(() => {
+    const agrupado: Record<string, TaskHistory[]> = {};
+    filtrados.forEach(item => {
+      const chave = item.contact_name;
+      if (!agrupado[chave]) agrupado[chave] = [];
+      agrupado[chave].push(item);
+    });
+    return agrupado;
+  }, [filtrados]);
+
+  const historicosSelecionados = clienteSelecionado ? agrupadoPorCliente[clienteSelecionado] ?? [] : [];
+  const totalPaginas = Math.ceil(historicosSelecionados.length / ITEMS_PER_PAGE);
+  const historicosPaginados = historicosSelecionados.slice((pagina - 1) * ITEMS_PER_PAGE, pagina * ITEMS_PER_PAGE);
+
+  const exportarCSV = () => {
+    const csv = Papa.unparse(filtrados);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'historico_por_cliente.csv';
+    link.click();
+  };
 
   return (
     <Box mt={4}>
-      <Typography variant="h4" gutterBottom>📚 Histórico por Cliente</Typography>
+      <Typography variant="h4" gutterBottom>🧾 Histórico por Cliente</Typography>
 
-      <Grid container spacing={2} mb={3}>
-        <Grid item xs={12} md={4}>
-          <TextField
-            label="Filtrar por nome"
-            value={filtroNome}
-            onChange={(e) => setFiltroNome(e.target.value)}
-            fullWidth
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <DatePicker
-            label="Data início"
-            value={dataInicio}
-            onChange={setDataInicio}
-            slotProps={{ textField: { fullWidth: true } }}
-          />
-        </Grid>
-        <Grid item xs={12} md={4}>
-          <DatePicker
-            label="Data fim"
-            value={dataFim}
-            onChange={setDataFim}
-            slotProps={{ textField: { fullWidth: true } }}
-          />
-        </Grid>
-      </Grid>
+      {!clienteSelecionado && (
+        <>
+          <Grid container spacing={2} mb={3}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                label="Buscar por nome"
+                value={filtroNome}
+                onChange={(e) => setFiltroNome(e.target.value)}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <Select
+                value={statusSelecionado}
+                onChange={(e) => setStatusSelecionado(e.target.value)}
+                fullWidth
+                displayEmpty
+              >
+                <MenuItem value="">Todos os status</MenuItem>
+                <MenuItem value="Reagendado">Reagendado</MenuItem>
+                <MenuItem value="Concluído">Concluído</MenuItem>
+                <MenuItem value="Pendente">Pendente</MenuItem>
+              </Select>
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <DatePicker
+                label="Data início"
+                value={dataInicio}
+                onChange={setDataInicio}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <DatePicker
+                label="Data fim"
+                value={dataFim}
+                onChange={setDataFim}
+                slotProps={{ textField: { fullWidth: true } }}
+              />
+            </Grid>
+          </Grid>
 
-      {clientesFiltrados.map(cliente => (
-        <Card key={cliente.id} sx={{ mb: 2 }}>
-          <CardContent onClick={() => setClienteSelecionado(cliente)} sx={{ cursor: 'pointer' }}>
-            <Typography variant="h6">{cliente.nome}</Typography>
-            <Typography variant="body2">📞 {cliente.telefone} | ✉️ {cliente.email}</Typography>
-            <Typography variant="body2">🏢 {cliente.empresa} | 🔗 {cliente.status}</Typography>
-          </CardContent>
-        </Card>
-      ))}
+          <Box mb={2} display="flex" justifyContent="flex-end">
+            <Button variant="outlined" onClick={exportarCSV}>
+              📁 Exportar CSV
+            </Button>
+          </Box>
 
-      <Dialog open={!!clienteSelecionado} onClose={() => setClienteSelecionado(null)} fullWidth maxWidth="md">
-        <DialogTitle>🧾 Histórico detalhado</DialogTitle>
-        <DialogContent dividers>
-          {clienteSelecionado && (
-            <Box display="grid" gap={2}>
-              {/* Identificação */}
-              <Typography><strong>Nome:</strong> {clienteSelecionado.nome}</Typography>
-              <Typography><strong>Contato:</strong> {clienteSelecionado.telefone} / {clienteSelecionado.email}</Typography>
-              <Typography><strong>Endereço:</strong> {clienteSelecionado.endereco}</Typography>
-              <Typography><strong>Cadastro:</strong> {dayjs(clienteSelecionado.dataCadastro).format('DD/MM/YYYY')}</Typography>
-              <Typography><strong>Status:</strong> {clienteSelecionado.status}</Typography>
-              <Typography><strong>Código:</strong> {clienteSelecionado.codigoCliente}</Typography>
-              <Typography><strong>Fonte:</strong> {clienteSelecionado.origem}</Typography>
+          <Grid container spacing={2}>
+            {Object.entries(agrupadoPorCliente).map(([cliente, historicos]) => (
+              <Grid item xs={12} md={6} key={cliente}>
+                <Card
+                  sx={{ cursor: 'pointer', transition: '0.3s', '&:hover': { boxShadow: 5 } }}
+                  onClick={() => {
+                    setClienteSelecionado(cliente);
+                    setPagina(1);
+                  }}
+                >
+                  <CardContent>
+                    <Typography variant="h6">{cliente}</Typography>
+                    <Typography variant="body2">📝 {historicos.length} histórico(s)</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+        </>
+      )}
 
-              {/* Empresa */}
-              <Typography><strong>Empresa:</strong> {clienteSelecionado.empresa}</Typography>
-              <Typography><strong>Ramo:</strong> {clienteSelecionado.ramo}</Typography>
-              <Typography><strong>Porte:</strong> {clienteSelecionado.porte}</Typography>
-              <Typography><strong>Decisores:</strong> {clienteSelecionado.decisores}</Typography>
+      {clienteSelecionado && (
+        <>
+          <Box display="flex" justifyContent="space-between" alignItems="center" mt={4} mb={2}>
+            <Typography variant="h5">📂 Históricos de {clienteSelecionado}</Typography>
+            <Button variant="outlined" onClick={() => setClienteSelecionado(null)}>⬅️ Voltar</Button>
+          </Box>
 
-              {/* Preferências e Observações */}
-              <Typography><strong>Preferências:</strong> {clienteSelecionado.preferencias}</Typography>
-              <Typography><strong>Observações:</strong> {clienteSelecionado.observacoes}</Typography>
-              <Typography><strong>Ações Futuras:</strong> {clienteSelecionado.acaoFutura}</Typography>
-
-              {/* Compras */}
-              <Typography variant="h6" mt={2}>🛒 Histórico de Compras</Typography>
-              {clienteSelecionado.compras.map((compra, index) => (
-                <Typography key={index}>
-                  {dayjs(compra.data).format('DD/MM/YYYY')} – {compra.produto} ({compra.quantidade} un.) – R$ {compra.valor} – {compra.formaPagamento}
+          {historicosPaginados.map(item => (
+            <Card key={item.id} sx={{ mb: 2 }}>
+              <CardContent>
+                <Typography><strong>Responsável:</strong> {item.assigned_to_name}</Typography>
+                <Typography><strong>Status:</strong>{' '}
+                  <Box
+                    component="span"
+                    sx={{
+                      backgroundColor: corDoStatus[item.status] ?? '#ccc',
+                      color: '#fff',
+                      px: 1.2,
+                      py: 0.4,
+                      borderRadius: 1,
+                      fontSize: '0.8rem',
+                      fontWeight: 500,
+                    }}
+                  >
+                    {item.status}
+                  </Box>
                 </Typography>
-              ))}
+                <Typography><strong>Empresa:</strong> {item.empresa}</Typography>
+                <Typography><strong>E-mail:</strong> {item.email}</Typography>
+                <Typography><strong>Telefone:</strong> {item.telefone}</Typography>
+                <Typography><strong>Observação do vendedor:</strong> {item.observacao_vendedor || '—'}</Typography>
+                <Typography><strong>Reagendado em:</strong> {safeDateFormat(item.reagendado_em)}</Typography>
+              </CardContent>
+            </Card>
+          ))}
 
-              {/* Interações */}
-              <Typography variant="h6" mt={2}>📞 Interações com Vendedores</Typography>
-              {clienteSelecionado.interacoes.map((int, index) => (
-                <Typography key={index}>
-                  {dayjs(int.data).format('DD/MM/YYYY HH:mm')} – {int.tipo} sobre "{int.assunto}" – {int.status} – {int.vendedor}
-                </Typography>
-              ))}
-
-              {/* Reclamações */}
-              <Typography variant="h6" mt={2}>📮 Solicitações e Reclamações</Typography>
-              {clienteSelecionado.solicitacoes.map((sol, index) => (
-                <Typography key={index}>
-                  {dayjs(sol.data).format('DD/MM/YYYY')} – {sol.tipo} | {sol.assunto} – {sol.status}
-                </Typography>
-              ))}
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setClienteSelecionado(null)}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
+          <Pagination
+            count={totalPaginas}
+            page={pagina}
+            onChange={(e, val) => setPagina(val)}
+            sx={{ mt: 2 }}
+          />
+        </>
+      )}
     </Box>
   );
-};
-
-export default HistoricoPorCliente;
-
+}

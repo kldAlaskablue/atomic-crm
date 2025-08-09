@@ -6,6 +6,7 @@ import {
 import { DatePicker } from '@mui/x-date-pickers';
 import { useEffect, useState } from 'react';
 import { Dayjs } from 'dayjs';
+import dayjs from 'dayjs';
 import { dataProvider } from '../providers/supabase';
 
 interface NovaTarefaModalProps {
@@ -26,6 +27,7 @@ const NovaTarefaModal = ({
   const [leadId, setLeadId] = useState('');
   const [objetivo, setObjetivo] = useState('');
   const [dataSelecionada, setDataSelecionada] = useState<Dayjs | null>(dataSugestao ?? null);
+  const [horaSelecionada, setHoraSelecionada] = useState('');
   const [responsavel, setResponsavel] = useState('');
   const [prioridade, setPrioridade] = useState('');
   const [salvando, setSalvando] = useState(false);
@@ -41,10 +43,6 @@ const NovaTarefaModal = ({
       const lista = res.data.map((lead: any) => ({ id: lead.id, nome: lead.nome }));
       setLeads(lista);
     });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
 
     dataProvider.getList('users', {
       pagination: { page: 1, perPage: 100 },
@@ -57,21 +55,24 @@ const NovaTarefaModal = ({
   }, [open]);
 
   const handleSalvar = async () => {
-    if (!leadId || !dataSelecionada || !responsavel) {
-      alert('Preencha cliente, data e responsável!');
+    if (!leadId || !dataSelecionada || !horaSelecionada || !responsavel) {
+      alert('Preencha cliente, data, horário e responsável!');
       return;
     }
 
     setSalvando(true);
     try {
+      const dataHoraFinal = dayjs(`${dataSelecionada?.format('YYYY-MM-DD')}T${horaSelecionada}`).format('YYYY-MM-DD HH:mm:ss');
+
       await dataProvider.create('tasks', {
         data: {
           lead_id: leadId,
+          contact_name: leads.find(l => l.id === leadId)?.nome ?? '',
           objetivo,
-          due_date: dataSelecionada.toISOString(),
+          due_date: dataHoraFinal,
           responsavel,
           prioridade,
-          status: 'Pendente' // ✅ campo obrigatório para Kanban
+          status: 'Pendente'
         },
       });
 
@@ -89,8 +90,18 @@ const NovaTarefaModal = ({
     setObjetivo('');
     setResponsavel('');
     setPrioridade('');
+    setHoraSelecionada('');
     setDataSelecionada(dataSugestao ?? null);
     onClose();
+  };
+
+  const gerarOpcoesHorario = () => {
+    const horarios = [];
+    for (let h = 8; h <= 18; h++) {
+      horarios.push(`${String(h).padStart(2, '0')}:00`);
+      horarios.push(`${String(h).padStart(2, '0')}:30`);
+    }
+    return horarios;
   };
 
   return (
@@ -145,11 +156,24 @@ const NovaTarefaModal = ({
           </FormControl>
 
           <DatePicker
-            label="Data"
+            label="Data do Compromisso"
             value={dataSelecionada}
             onChange={(date) => setDataSelecionada(date)}
             slotProps={{ textField: { fullWidth: true } }}
           />
+
+          <FormControl fullWidth>
+            <InputLabel>Horário</InputLabel>
+            <Select
+              value={horaSelecionada}
+              label="Horário"
+              onChange={(e) => setHoraSelecionada(e.target.value)}
+            >
+              {gerarOpcoesHorario().map(hora => (
+                <MenuItem key={hora} value={hora}>{hora}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Box>
       </DialogContent>
 
@@ -164,4 +188,3 @@ const NovaTarefaModal = ({
 };
 
 export default NovaTarefaModal;
-

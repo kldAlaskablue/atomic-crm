@@ -115,7 +115,7 @@ export const Task = ({
                                         data: {
                                             due_date: new Date(
                                                 Date.now() +
-                                                    7 * 24 * 60 * 60 * 1000
+                                                7 * 24 * 60 * 60 * 1000
                                             )
                                                 .toISOString()
                                                 .slice(0, 10),
@@ -203,6 +203,9 @@ export const Task = ({
                 taskId={task.id}
                 open={openEdit}
                 close={handleCloseEdit}
+                onSaved={() => {
+                    // lógica de pós-salvamento
+                }}
             />
         </>
     );

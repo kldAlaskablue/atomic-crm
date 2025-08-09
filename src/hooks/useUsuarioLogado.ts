@@ -13,15 +13,12 @@ export const useUsuarioLogadoInfo = () => {
   const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      console.log('🔐 Sessão atual:', data?.session?.user?.id);
+    supabase.auth.getSession().then(({ data }) => {     
       const userId = data?.session?.user?.id;
-
       if (!userId) {
         setUsuario(null);
         return;
       }
-
       getSaleFromCache().then((sale) => {
         if (sale?.id === userId) {
           

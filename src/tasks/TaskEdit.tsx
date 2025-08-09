@@ -1,158 +1,163 @@
 import {
-  DialogContent,
-  DialogTitle,
-  TextField,
-  Button,
-  CircularProgress,
-  Stack,
-  DialogActions
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, TextField, Grid
 } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { supabase } from '../providers/supabase/supabase';
+import { useState, useEffect } from 'react';
 import { dataProvider } from '../providers/supabase';
 
-type TaskReagendarProps = {
+type Task = {
+  id: string;
+  nomecompleto: string;
+  telefone?: string;
+  email?: string;
+  empresa?: string;
+  due_date: string;
+  observacao_vendedor?: string;
+};
+
+type TaskEditProps = {
   open: boolean;
   close: () => void;
   taskId: string;
-  onSaved?: () => void;
+  selectedData?: Task | null;
+  onSaved: () => void;
 };
 
-export const TaskEdit = ({ open, close, taskId, onSaved }: TaskReagendarProps) => {
-  const [originalTask, setOriginalTask] = useState<any>(null);
-  const [responsavelId, setResponsavelId] = useState<string | null>(null);
-  const [dueDate, setDueDate] = useState('');
-  const [time, setTime] = useState('');
-  const [anotacao, setAnotacao] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(false);
+export function TaskEdit({
+  open,
+  close,
+  selectedData,
+  taskId,
+  onSaved
+}: TaskEditProps) {
+  const [form, setForm] = useState<Task | null>(null);
+  const [salvando, setSalvando] = useState(false);
 
   useEffect(() => {
-    if (!open || !taskId) return;
+    if (selectedData) {
+      setForm({
+        id: selectedData.id,
+        nomecompleto: selectedData.nomecompleto ?? '',
+        telefone: selectedData.telefone ?? '',
+        email: selectedData.email ?? '',
+        empresa: selectedData.empresa ?? '',
+        due_date: selectedData.due_date.slice(0, 16),
+        observacao_vendedor: selectedData.observacao_vendedor ?? '',
+      });
+    } else {
+      setForm(null);
+    }
+  }, [selectedData]);
 
-    const carregarDados = async () => {
-      setFetching(true);
-
-      try {
-        const { data: taskRes } = await dataProvider.getOne('tasks', { id: taskId });
-        const task = taskRes;
-        setOriginalTask(task);
-        setDueDate(task.due_date?.slice(0, 10) || '');
-        setTime(task.due_date?.slice(11, 16) || '');
-
-        const { data: userRes } = await supabase.auth.getUser();
-        if (userRes?.user?.id) {
-          setResponsavelId(userRes.user.id);
-        }
-      } catch (err) {
-        console.error('Erro ao carregar dados:', err);
-        setOriginalTask(null);
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    carregarDados();
-  }, [open, taskId]);
+  const handleChange = (field: keyof Task) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm(prev => prev ? { ...prev, [field]: e.target.value } : prev);
+  };
 
   const handleSave = async () => {
-    if (!originalTask || !responsavelId || !dueDate || !time || !anotacao) return;
+    if (!form || salvando) return;
 
-    const novaDueDate = `${dueDate}T${time}:00`;
-    setLoading(true);
+    setSalvando(true);
+    console.log('🔄 Atualizando tarefa:', form);
 
     try {
+      const { id, ...rest } = form;
+
       await dataProvider.update('tasks', {
-        id: originalTask.id,
+        id: form.id,
         data: {
-          due_date: novaDueDate,
-          status: 'Reagendado',
+          contact_name: form.nomecompleto,
+          telefone: form.telefone,
+          email: form.email,
+          empresa: form.empresa,
+          due_date: form.due_date,
+          observacao_vendedor: form.observacao_vendedor,
         },
-        previousData: originalTask,
+        previousData: selectedData!,
       });
 
-      await dataProvider.create('clientes', {
-        data: {
-          nome: originalTask.contact_name,
-          telefone: originalTask.telefone || '',
-          email: originalTask.email || '',
-          empresa: originalTask.empresa || null,
-          id_responsavel: responsavelId,
-          fase: 'Reagendado',
-          data_fase: new Date().toISOString(),
-          anotacao,
-          proposta_valor: null,
-          proposta_data: null,
-          proposta_status: null,
-        }
-      });
-
+      console.log('✅ Tarefa atualizada com sucesso');
+      onSaved();
       close();
-      onSaved?.();
     } catch (err) {
-      console.error('Erro ao salvar reagendamento:', err);
+      console.error('❌ Erro ao atualizar tarefa:', err);
     } finally {
-      setLoading(false);
+      setSalvando(false);
     }
   };
 
-  if (fetching || !originalTask) {
-    return (
-      <DialogContent>
-        <CircularProgress />
-      </DialogContent>
-    );
-  }
-
   return (
-    <>
-      <DialogTitle sx={{ mb: 2 }}>
-        🕓 Reagendar tarefa de {originalTask.contact_name}
-      </DialogTitle>
-
-      <DialogContent dividers>
-        <Stack spacing={3}>
-          <TextField
-            label="Nova data"
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            fullWidth
-            InputLabelProps={{ shrink: true }}
-          />
-
-          <TextField
-            label="Novo horário"
-            type="time"
-            value={time}
-            onChange={(e) => setTime(e.target.value)}
-            fullWidth
-          />
-
-          <TextField
-            label="Anotação do vendedor"
-            multiline
-            value={anotacao}
-            onChange={(e) => setAnotacao(e.target.value)}
-            rows={4}
-            fullWidth
-          />
-        </Stack>
+    <Dialog open={open && !!form} onClose={close} fullWidth maxWidth="sm">
+      <DialogTitle>✏️ Editar Tarefa</DialogTitle>
+      <DialogContent>
+        {form ? (
+          <Grid container spacing={2} mt={1}>
+            <Grid item xs={12}>
+              <TextField
+                label="Nome completo"
+                value={form.nomecompleto}
+                onChange={handleChange('nomecompleto')}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="Telefone"
+                value={form.telefone}
+                onChange={handleChange('telefone')}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                label="E-mail"
+                value={form.email}
+                onChange={handleChange('email')}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Empresa"
+                value={form.empresa}
+                onChange={handleChange('empresa')}
+                fullWidth
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Data limite"
+                type="datetime-local"
+                value={form.due_date}
+                onChange={handleChange('due_date')}
+                fullWidth
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                label="Observação do vendedor"
+                multiline
+                minRows={3}
+                value={form.observacao_vendedor}
+                onChange={handleChange('observacao_vendedor')}
+                fullWidth
+              />
+            </Grid>
+          </Grid>
+        ) : (
+          <p>⏳ Carregando dados da tarefa...</p>
+        )}
       </DialogContent>
-
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={close} variant="outlined" disabled={loading}>
-          Cancelar
-        </Button>
+      <DialogActions>
+        <Button onClick={close}>Cancelar</Button>
         <Button
           onClick={handleSave}
+          disabled={!form || salvando}
           variant="contained"
-          disabled={loading || !anotacao || !dueDate || !time}
         >
-          {loading ? <CircularProgress size={20} /> : 'Salvar reagendamento'}
+          {salvando ? 'Salvando...' : 'Salvar'}
         </Button>
       </DialogActions>
-    </>
+    </Dialog>
   );
-};
-
+}
